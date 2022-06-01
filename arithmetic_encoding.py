@@ -87,7 +87,6 @@ def make_list(freq):
 
 def encoding(name, node_list):
 	num_of_sym=5
-
 	try:
 		to_encode=open(name, "r")
 		encoded=open(name[:-4]+"(encoded).txt", 'wb')
@@ -95,7 +94,7 @@ def encoding(name, node_list):
 		print("Указанный файл не может быть открыт")
 		input("Нажимте Enter для закрытия консоли")
 		exit()
-	encoded.write(" ".encode("ascii"))
+	encoded.write(str(num_of_sym).encode("ascii"))
 	for i in range (128):
 		if (freq[i]!=0):
 			encoded.write(('\x01'+chr(i)+str(freq[i])).encode("ascii"))
