@@ -7,14 +7,12 @@ class Node:
 	def __repr__(self):
 		return repr((self.char, self.freq, self.low, self.high))
 	def __str__(self):
-		return str(self.char)+" "+str(self.freq)
-	def is_belong(self, val, left, right):
-		High=left+(right-left)*self.high 
-		Low=left+(right-left)*self.low 
-		return val<High and val>=Low
+		return str(self.char)+" "+str(self.freq)+' '+str(self.low)+' '+str(self.high)
 	def new_lr(self, interval):
-		interval[1]=interval[0]+(interval[1]-interval[0])*self.high 
-		interval[0]=interval[0]+(interval[1]-interval[0])*self.low
+		print("interval ", interval, self.low, self.high)
+		interval[0], interval[1]=interval[0]+(interval[1]-interval[0])*self.low, interval[0]+(interval[1]-interval[0])*self.high 
+
+
 
 
 
@@ -34,19 +32,48 @@ def decode(name_code):
 	sym=sym.decode("ascii")
 	str1=''
 	node_list=[]
+	collect=0
 	while ord(sym)!=2:
 		sym=code.read(1)
 		char=sym.decode("ascii")
 		sym=code.read(1)
 		sym=sym.decode("ascii")
-		while ord(sym)!=1 or ord(sym)!=1:
+		while ord(sym)!=1 and ord(sym)!=2:
 			str1+=sym
 			sym=code.read(1)
-			print(sym)
 			sym=sym.decode("ascii")
 
-		node_list.append(Node(char, float(str1)))
+		node_list.append(Node(char, float(str1), collect, collect+float(str1)))
+		collect+=float(str1)
 		str1=''
+	
+	sym=code.read(1)
+	integer=int.from_bytes(sym, "big")
+	num=0
+	while len(sym)!=0:
+		bits=0
+		for i in range(4):
+			bits=bits<<8
+			bits=bits|integer
+			sym=code.read(1)
+			integer=int.from_bytes(sym, "big")
+		mask=1<<31
+		num=0
+		for i in range(32):
+			if (bits&mask)!=0:
+				num+=1/2**(i+1)
+			mask=mask>>1
+		# print ("num ", num)
+		for i in range(num_of_sym):
+			for j in node_list:
+				if j.low<=num and j.high>num:
+					decoded.write(j.char)
+					num=(num-j.low)/(j.high-j.low)
+					# print(num, i, num_of_sym)
+					break
+
+
+
 
 
 
