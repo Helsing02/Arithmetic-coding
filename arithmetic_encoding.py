@@ -1,25 +1,25 @@
-import math
+import os
+from decimal import Decimal, getcontext
 class Node:
-	def __init__(self, char, num_in_text, freq, low=0, high=0):
+	def __init__(self, char, num_in_text, freq="0", low="0", high="0"):
 		self.char=char
 		self.num_in_text=num_in_text
-		self.freq=freq
-		self.low=low
-		self.high=high
+		self.freq=Decimal(freq)
+		self.low=Decimal(low)
+		self.high=Decimal(high)
 	def __repr__(self):
 		return repr((self.char, self.freq, self.low, self.high))
 	def __str__(self):
-		return str(self.char)+" "+str(self.freq)+' '+str(self.low)+' '+str(self.high)
+		return str(self.char)+" "+str(self.num_in_text)+" "+str(self.freq)+' '+str(self.low)+' '+str(self.high)
 	def new_lr(self, interval):
-		interval[0], interval[1]=interval[0]+(interval[1]-interval[0])*self.low, interval[0]+(interval[1]-interval[0])*self.high 
+		new_inter=[interval[0]+(interval[1]-interval[0])*self.low, interval[0]+(interval[1]-interval[0])*self.high]
+		return new_inter 
 
 
-def count_entr(node_list):
-	a=node_list[len(node_list)-1].freq
-	log=-math.log(a, 10)
-	print(int(32/log))
-	return int(32/log)
 
+
+def prov(interval):
+	return interval[1]-interval[0]>Decimal("1")/2**32
 
 
 def count_freq(name):
@@ -49,13 +49,14 @@ def make_list(freq):
 	node_list=[]
 	for i in range(128):
 		if freq[i]!=0:
-			node_list.append(Node(chr(i), freq[i], freq[i]/freq[128]))
+			d=Decimal(str(freq[i]))
+			node_list.append(Node(chr(i), freq[i], d/freq[128]))
 	node_list=sorted(node_list, key=lambda i: i.freq, reverse=True)
 	collect=0
 	for i in node_list:
-		i.low=collect
+		i.low=Decimal(str(collect))
 		collect+=i.freq
-		i.high=collect
+		i.high=Decimal(str(collect))
 	return node_list
 
 def check(curr, interval):
@@ -66,26 +67,20 @@ def check(curr, interval):
 	return 1
 
 def write(fileadr, interval):
-	cont=0
+	cont=Decimal("0")
 	bits=0
+	t=True
 	for i in range(1, 33):
 		bits=bits<<1
-		if check(cont+1/(2**i), interval)==-1:
+		if (cont+Decimal("1")/(2**i))<interval[1]:
 			bits=bits|1
-			bits=bits<<(32-i)
-			for j in range(3, -1, -1):
-				new_i=bits>>8*j
-				fileadr.write(bytes([new_i&255]))
-			break
-		if check(cont+1/(2**i), interval)==1:
-			bits=bits|1
-			cont+=1/(2**i)
-	interval[0]=0
-	interval[1]=1
+			cont+=Decimal("1")/(2**i)
+	for j in range(3, -1, -1):
+		new_i=bits>>8*j
+		fileadr.write(bytes([new_i&255]))
+	
 
 def encoding(name, node_list):
-	# num_of_sym=count_entr(node_list)
-	num_of_sym=5
 	try:
 		to_encode=open(name, "r")
 		encoded=open(name[:-4]+"(encoded).txt", 'wb')
@@ -93,33 +88,27 @@ def encoding(name, node_list):
 		print("Указанный файл не может быть открыт")
 		input("Нажимте Enter для закрытия консоли")
 		exit()
-	encoded.write(('\x01'*len(str(num_of_sym))).encode("ascii"))
-	encoded.write('\x01'.encode("ascii"))
-	encoded.write(str(num_of_sym).encode("ascii"))
 	for i in node_list:
-		encoded.write(('\x01'+i.char+str(i.num_in_text)).encode("ascii"))
+		encoded.write((i.char+str(i.num_in_text)+'\x01').encode("ascii"))
 	encoded.write("\x02".encode("ascii"))
 
 	curr_num=0
-	interval=[0, 1]
-	val=0
+	interval=[Decimal("0"), Decimal("1")]
 	sym=to_encode.read(1)
-	while True:
+
+	while sym!='':
 		for i in node_list:
 			if i.char==sym:
-				i.new_lr(interval)
-				curr_num+=1
+				if prov(i.new_lr(interval)):
+					interval=i.new_lr(interval)
+					sym=to_encode.read(1)
+				else:
+					write(encoded, interval)
+					interval[0]=Decimal("0")
+					interval[1]=Decimal("1")
 				break
-		if curr_num==num_of_sym or sym=='':
-			if curr_num!=0:
-				write(encoded, interval)
-			if sym=='':
-				break
-			curr_num=0
-		sym=to_encode.read(1)
-
-	encoded.seek(0)
-	encoded.write(str(num_of_sym-curr_num).encode("ascii"))
+	if (interval!=[0, 1]):
+		write(encoded, interval)
 
 
 
@@ -131,9 +120,16 @@ def encoding(name, node_list):
 
 
 #вызовы 
-p=input("Введите путь файла для кодировки: ")
+getcontext().prec=38
+# p=input("Введите путь файла для кодировки: ")
+p='c:\\users\\user\\desktop\\text.txt'
 
 freq=count_freq(p)
 node_list=make_list(freq)
+
 encoding(p, node_list)
+
+a=os.stat(p).st_size
+b=os.stat(p[:-4]+'(encoded).txt').st_size
+print('Сжатие %f%%' %(b/a*100))
 
