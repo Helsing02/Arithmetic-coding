@@ -16,62 +16,58 @@ class Node:
 
 
 
-
-
-
 def decode(name_code):
     try:
-        decoded=open(name_code[:-13]+'(decoded).txt', 'w')
-        code=open(name_code, 'rb')
+        decoded_file=open(name_code[:-13]+'(decoded).txt', 'w')
+        encoded_file=open(name_code, 'rb')
     except:
         print('Указанный файл не может быть открыт')
         input('Нажимте Enter для закрытия консоли')
         exit()
 
- 
     # Making node_list
     str1=''
     node_list=[]
     len_of_mess=0
     sym='a'
     while True:
-        sym=code.read(1)
+        sym=encoded_file.read(1)
         char=sym.decode('ascii')
         if ord(char)==2:
             break
-        sym=code.read(1)
+        sym=encoded_file.read(1)
         sym=sym.decode('ascii')
         str1=''
         while ord(sym)!=1 and ord(sym)!=2:
             str1+=sym
-            sym=code.read(1)
+            sym=encoded_file.read(1)
             sym=sym.decode('ascii')
         node_list.append(Node(char, int(str1)))
         len_of_mess+=int(str1)
-    collect=Decimal('0')
+    to_sym=Decimal('0')
     for i in node_list:
-        i.low=collect/len_of_mess
-        collect+=i.num_in_text
-        i.high=collect/len_of_mess
+        i.low=to_sym/len_of_mess
+        to_sym+=i.num_in_text
+        i.high=to_sym/len_of_mess
 
     # Decoding
-    sym=code.read(1)
-    integer=int.from_bytes(sym, 'big')
+    sym=encoded_file.read(1)
+    byte=int.from_bytes(sym, 'big')
     num=Decimal('0')
     differ=Decimal('1')
     while True:
         bits=0
         for i in range(4):
-            bits=bits<<8
-            bits=bits|integer
-            sym=code.read(1)
-            integer=int.from_bytes(sym, 'big')
+            bits<<=8
+            bits|=byte
+            sym=encoded_file.read(1)
+            byte=int.from_bytes(sym, 'big')
         mask=1<<31
         num=Decimal('0')
         for i in range(32):
             if (bits&mask)!=0:
                 num+=Decimal('1')/2**(i+1)
-            mask=mask>>1
+            mask>>=1
         differ=Decimal('1')
         flagBrake=False
         while flagBrake is False:
@@ -79,7 +75,7 @@ def decode(name_code):
                 if j.low<=num and j.high>num:
                     if differ*(j.high-j.low)>Decimal('1')/2**32:
                         differ=differ*(j.high-j.low)
-                        decoded.write(j.char)
+                        decoded_file.write(j.char)
                         len_of_mess-=1
                         if len_of_mess==0:
                             return
@@ -88,8 +84,8 @@ def decode(name_code):
                         flagBrake=True
                     break
 
-    decoded.close()
-    code.close()
+    decoded_file.close()
+    encoded_file.close()
 
 
 
@@ -118,8 +114,6 @@ def cmp(name, orig):
 
 
 
-# c:\\users\\user\\desktop\\text(encoded).txt
-# c:\\users\\user\\desktop\\text.txt
 getcontext().prec=38
 
 # p=input('Введите путь файла для декодировки: ')
